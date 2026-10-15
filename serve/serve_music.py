@@ -110,6 +110,14 @@ def with_cache_mounts(cmd: str, work_dir: Path) -> str:
         else cmd.replace("docker run ", f"docker run {vols} {envs} ", 1)
 
 
+def publish_port(cmd: str, port: int) -> str:
+    """Publish the server on `port` on the host (inside the container it stays 20000)."""
+    pat = re.compile(r"--publish \d+:20000")
+    if len(re.findall(r"--publish \S+", cmd)) != 1 or len(pat.findall(cmd)) != 1:
+        raise LauncherError("expected exactly one --publish argument (host:20000) in the docker command")
+    return pat.sub(f"--publish {port}:20000", cmd, count=1)
+
+
 def detach(cmd: str) -> str:
     return cmd.replace("docker run ", "docker run -d ", 1)
 
@@ -135,10 +143,25 @@ def image_of(cmd: str) -> str:
 
 # ---- the launcher ----------------------------------------------------------------------------------------------------
 
+TOOL_DIRS = (".local/bin", ".tenstorrent-venv/bin")     # where tt-model and gozer usually live; a service's PATH lacks them
+
+
+def ensure_path(env: dict, home: Path = Path.home()) -> None:
+    """Append the usual tool directories to env["PATH"] when they exist and are not already there."""
+    parts = [p for p in env.get("PATH", "").split(":") if p]
+    for d in TOOL_DIRS:
+        full = str(home / d)
+        if (home / d).is_dir() and full not in parts:
+            parts.append(full)
+    env["PATH"] = ":".join(parts)
+
+
 def default_runner(argv, timeout=None):
     try:
         p = subprocess.run(argv, capture_output=True, text=True, timeout=timeout)
         return p.returncode, p.stdout + p.stderr, False
+    except FileNotFoundError:
+        return 127, f"command not found: {argv[0]} (PATH is {os.environ.get('PATH', '')})", False
     except subprocess.TimeoutExpired as e:
         return None, ((e.stdout or b"").decode(errors="replace") if isinstance(e.stdout, bytes) else (e.stdout or "")), True
 
@@ -249,6 +272,7 @@ class Launcher:
                 self.log(f"workaround selected: {self.workaround['reason']}")
         cmd = add_model_dir(base, cfg.model_dir, cfg.display_name, extra_mounts=link_dirs(cfg.model_dir))
         cmd = with_cache_mounts(cmd, cfg.work_dir)
+        cmd = publish_port(cmd, cfg.port)
         cmd = re.sub(r"--name \S+", f"--name {cfg.container_name}", cmd, count=1)
         if extra:
             cmd = cmd.replace("--ipc host", f"--ipc host {extra}", 1)
@@ -318,12 +342,14 @@ def resolve_model_dir(args) -> Path:
 
 def main(argv=None) -> int:
     root = Path(__file__).resolve().parent.parent
+    ensure_path(os.environ)
     load_env_file(root / ".env.local")
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--model-dir", default=os.environ.get("MUSIC_MODEL_DIR"))
     ap.add_argument("--weights-repo", default=os.environ.get("MUSIC_WEIGHTS_REPO", DEFAULT_WEIGHTS_REPO))
     ap.add_argument("--workaround", choices=("auto", "on", "off"), default=os.environ.get("MUSIC_WORKAROUND", "auto"))
     ap.add_argument("--name", default=os.environ.get("MUSIC_MODEL_NAME", "fiona-crapple-merged"))
+    ap.add_argument("--port", type=int, default=int(os.environ.get("MUSIC_SERVER_PORT", "20000")), help="host port for the server")
     ap.add_argument("--ui", action="store_true", help="run the Gradio app after the server is healthy")
     ap.add_argument("--ui-port", type=int, default=int(os.environ.get("MUSIC_UI_PORT", "7871")))
     args = ap.parse_args(argv)
@@ -332,7 +358,8 @@ def main(argv=None) -> int:
         if not model_dir.is_dir():
             raise LauncherError(f"model directory {model_dir} does not exist")
         work = Path.home() / ".cache" / "tt-minimax-music-blackhole" / hashlib.sha256(str(model_dir).encode()).hexdigest()[:12]
-        launcher = Launcher(Config(model_dir=model_dir, display_name=args.name, work_dir=work, workaround=args.workaround))
+        launcher = Launcher(Config(model_dir=model_dir, display_name=args.name, work_dir=work, workaround=args.workaround,
+                                       port=args.port, container_name=f"tt-minimax-music-blackhole-{args.port}"))
         signal.signal(signal.SIGTERM, lambda *a: (_ for _ in ()).throw(KeyboardInterrupt()))
         launcher.start()
     except LauncherError as e:

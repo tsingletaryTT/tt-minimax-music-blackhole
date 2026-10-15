@@ -270,3 +270,57 @@ def test_forced_workaround_really_mounts_the_patched_file(tmp_path):
     assert ":/opt/tt-metal/ttnn/ttnn/operations/core.py:ro" in docker_run_call(r)
     text = Path(L.workaround["file"]).read_text()
     assert text.count("if True:") == 1 and hashlib.sha256(text.encode()).hexdigest() == L.workaround["sha256"]
+
+
+# ---- the server's published port ------------------------------------------------------------------------------------------
+
+def test_publish_port_changes_only_the_host_side():
+    out = sm.publish_port(PRINTED, 20001)
+    assert "--publish 20001:20000" in out and "--publish 20000:20000" not in out
+
+
+@pytest.mark.parametrize("cmd", ["docker run --ipc host img python x", PRINTED + " --publish 9:9"])
+def test_publish_port_requires_exactly_one_publish_argument(cmd):
+    with pytest.raises(sm.LauncherError, match="exactly one --publish"):
+        sm.publish_port(cmd, 20001)
+
+
+def test_the_launcher_publishes_its_configured_port(tmp_path):
+    L, r = make_launcher(tmp_path, probe=(0, "PROBE-OK", False))
+    L.cfg.port = 20005
+    L.start()
+    assert "--publish 20005:20000" in docker_run_call(r)
+
+
+# ---- running under a service manager: a short PATH, a missing command -------------------------------------------------------
+
+def test_a_missing_command_is_a_plain_result_not_a_traceback():
+    rc, out, timed_out = sm.default_runner(["definitely-not-a-real-command-xyz", "--x"])
+    assert rc == 127 and not timed_out and "command not found: definitely-not-a-real-command-xyz" in out
+
+
+def test_ensure_path_adds_the_usual_tool_directories_once(tmp_path, monkeypatch):
+    home = tmp_path
+    for d in (".local/bin", ".tenstorrent-venv/bin"):
+        (home / d).mkdir(parents=True)
+    env = {"PATH": "/usr/bin:/bin"}
+    sm.ensure_path(env, home=home)
+    parts = env["PATH"].split(":")
+    assert parts[:2] == ["/usr/bin", "/bin"]
+    assert str(home / ".local/bin") in parts and str(home / ".tenstorrent-venv/bin") in parts
+    before = env["PATH"]
+    sm.ensure_path(env, home=home)
+    assert env["PATH"] == before                                    # no duplicates on a second call
+
+
+def test_ensure_path_skips_directories_that_do_not_exist(tmp_path):
+    env = {"PATH": "/usr/bin"}
+    sm.ensure_path(env, home=tmp_path)
+    assert env["PATH"] == "/usr/bin"
+
+
+def test_a_missing_tt_model_is_a_launcher_error_that_names_the_command(tmp_path):
+    L, r = make_launcher(tmp_path, probe=(0, "PROBE-OK", False),
+                         runner_extra={"--print": (127, "command not found: tt-model", False)})
+    with pytest.raises(sm.LauncherError, match="tt-model"):
+        L.start()

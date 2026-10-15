@@ -1,0 +1,5 @@
+name: minimax-music
+description: MiniMax-Music3 with the fiona-crapple adapter on a Blackhole chip. Writes songs from lyrics and a description (Gradio, boots the model on a leased chip)
+port: 7871
+chips: 1
+launch: .venv/bin/python serve/serve_music.py --ui --port 20001 --ui-port 7871
