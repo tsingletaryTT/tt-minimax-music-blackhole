@@ -1,0 +1,17 @@
+{
+  "base": "MiniMaxAI/MiniMax-Music3@fbdf52fbaaca799592917417eb05f1899f1255ec",
+  "adapter": "terminusresearch/minimax-music3-lm-lora-fiona-crapple, regularised/checkpoint-750/pytorch_lora_weights.safetensors",
+  "component": "language_model",
+  "strength": 1.0,
+  "alpha": 64.0,
+  "rank": 64,
+  "modules_merged": 252,
+  "shards_rewritten": [
+    "language_model/model-00001-of-00004.safetensors",
+    "language_model/model-00002-of-00004.safetensors",
+    "language_model/model-00003-of-00004.safetensors",
+    "language_model/model-00004-of-00004.safetensors"
+  ],
+  "max_relative_change": 0.0476,
+  "tool": "serve/merge_lora.py in tsingletaryTT/tt-minimax-music-blackhole"
+}

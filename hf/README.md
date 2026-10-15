@@ -43,7 +43,7 @@ Generating songs from lyrics and a text description of the music. Putting `fiona
 
 ## Quickstart
 
-This repository is a companion, not a tt-model package: it holds the launcher and a Gradio demo, and the weights are in
+This repository is a companion to the catalog package. It holds a launcher and a Gradio demo, and the weights are in
 [episod/minimax-music3-fiona-crapple](https://huggingface.co/episod/minimax-music3-fiona-crapple).
 
 ```bash

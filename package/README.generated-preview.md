@@ -52,7 +52,7 @@ tt serve episod/minimax-music3-fiona-crapple-blackhole
 
 Without tt-cli: `tt-model serve episod/minimax-music3-fiona-crapple-blackhole`.
 
-This repository is a companion, not a tt-model package: it holds the launcher and a Gradio demo, and the weights are in
+This repository is a companion to the catalog package. It holds a launcher and a Gradio demo, and the weights are in
 [episod/minimax-music3-fiona-crapple](https://huggingface.co/episod/minimax-music3-fiona-crapple).
 
 ```bash

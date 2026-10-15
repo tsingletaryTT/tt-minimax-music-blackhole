@@ -1,4 +1,4 @@
-# DRAFT, NOT BUILT. A container (v5.1) manifest for a package of the MiniMax-Music3 server with the merged weights, derived from the
+# DRAFT. NOT BUILT. A container (v5.1) manifest for a package of the MiniMax-Music3 server with the merged weights, derived from the
 # catalog package jashansinghTT/minimax-music3-blackhole. It cannot be built from this repository: `source.tt_metal` must be a
 # tt-metal checkout that contains models/autoports/minimaxai_minimax_music3, and the checkout the catalog package was built from is not
 # published. What this file is for today: the `card:` block below is the source of the model card (see hf/README.md), and the
@@ -86,7 +86,7 @@ card:
     - Python 3.12 for the demo (`pip install -r requirements.txt`)
 
   quickstart: |
-    This repository is a companion, not a tt-model package: it holds the launcher and a Gradio demo, and the weights are in
+    This repository is a companion to the catalog package. It holds a launcher and a Gradio demo, and the weights are in
     [episod/minimax-music3-fiona-crapple](https://huggingface.co/episod/minimax-music3-fiona-crapple).
 
     ```bash
