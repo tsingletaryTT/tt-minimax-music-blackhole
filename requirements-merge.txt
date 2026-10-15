@@ -1,0 +1,3 @@
+# only to run serve/merge_lora.py and its tests (the demo and launcher do not need them)
+torch
+safetensors

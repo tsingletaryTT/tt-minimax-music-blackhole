@@ -1,0 +1,156 @@
+# DRAFT, NOT BUILT. A container (v5.1) manifest for a package of the MiniMax-Music3 server with the merged weights, derived from the
+# catalog package jashansinghTT/minimax-music3-blackhole. It cannot be built from this repository: `source.tt_metal` must be a
+# tt-metal checkout that contains models/autoports/minimaxai_minimax_music3, and the checkout the catalog package was built from is not
+# published. What this file is for today: the `card:` block below is the source of the model card (see hf/README.md), and the
+# generator renders it in package/README.generated-preview.md to check it against the standard.
+schema: "5.1"
+repo: episod/minimax-music3-fiona-crapple-blackhole
+name: minimax-music3-fiona-crapple
+weights:
+  repo: episod/minimax-music3-fiona-crapple
+  ignore_patterns: ["flowmatching_vae.pth", "dav.pth", "qwen_7B/*", "assets/*", "figures/*", "scripts/*"]
+kind: tt-dit-server
+arch: blackhole
+image:
+  registry: hf
+source:
+  tt_metal: /path/to/tt-metal-with-minimax-music3
+  code:
+    - models/common
+    - models/tt_dit
+    - models/tt_transformers
+    - models/autoports/minimaxai_minimax_music3
+  ubuntu: "22.04"
+  python: "3.12"
+runtime:
+  app: "models.autoports.minimaxai_minimax_music3.server.app:app"
+  mesh_shape_env: MUSIC3_MESH_SHAPE
+  packages:
+    - "fastapi>=0.115,<1"
+    - "uvicorn[standard]>=0.30"
+    - "pydantic>=2.9,<3"
+    - "python-multipart>=0.0.9"
+    - "soundfile>=0.12"
+    - "soxr>=0.5"
+    - "numpy>=1.24.4,<2"
+    - safetensors
+    - tokenizers
+    - huggingface_hub
+    - transformers
+    - loguru
+    - pyyaml
+    - einops
+  lock: requirements.lock
+serve:
+  port: 8000
+  args: ["--timeout-keep-alive", "75"]
+  env:
+    MUSIC3_MAX_SEQ_LEN: "16384"
+    MUSIC3_MAX_FRAMES: "9000"
+    MUSIC3_WARMUP: "1"
+    MUSIC3_WARMUP_FRAMES: "200"
+    MUSIC3_TRACE_REGION_MB: "256"
+    TT_METAL_OPERATION_TIMEOUT_SECONDS: "180.0"
+serve_profiles:
+  - name: p150
+    description: One Blackhole chip (P150; on a P300 or QuietBox 2 the first chip). The whole model on 32 GB.
+    hardware: p150
+    mesh_device: P150
+    env:
+      TT_METAL_VISIBLE_DEVICES: "0"
+      MUSIC3_FABRIC_CONFIG: none
+default_profile: p150
+verify:
+  - "import models.autoports.minimaxai_minimax_music3.server.app as a; assert a.app"
+  - "import soundfile as sf; assert 'FLAC' in sf.available_formats()"
+
+card:
+  attribution: >-
+    Derived from [MiniMaxAI/MiniMax-Music3](https://huggingface.co/MiniMaxAI/MiniMax-Music3) by MiniMax, with the language-model adapter
+    [terminusresearch/minimax-music3-lm-lora-fiona-crapple](https://huggingface.co/terminusresearch/minimax-music3-lm-lora-fiona-crapple)
+    (`regularised/checkpoint-750`) merged into the weights at strength 1.0. See the original model cards for training and evaluation details.
+
+  description: >-
+    MiniMax Music 3, a lyrics-and-caption conditioned music generation model (8B Qwen3-based language model, 0.6B depth decoder for the
+    residual RVQ codebooks, 2.4B flow-matching DiT and a vocoder), with a rank-64 adapter merged into the language model. The adapter was
+    trained on nine tracks (about 52 minutes) in one style and answers to the trigger phrase `fiona crapple`. The server makes one song
+    at a time and returns 32 kHz stereo audio through the model's own HTTP job API.
+
+  intended_use: >-
+    Generating songs from lyrics and a text description of the music. Putting `fiona crapple` in the description steers the output toward
+    the adapter's training style, which its author describes as an intimate cafe singer-songwriter sound with jazzy piano, upright bass,
+    brushed drums and a raw female vocal.
+
+  prerequisites: |
+    - About 27 GB of free disk for the merged weights and 4 GB for the container image
+    - Python 3.12 for the demo (`pip install -r requirements.txt`)
+
+  quickstart: |
+    This repository is a companion, not a tt-model package: it holds the launcher and a Gradio demo, and the weights are in
+    [episod/minimax-music3-fiona-crapple](https://huggingface.co/episod/minimax-music3-fiona-crapple).
+
+    ```bash
+    git clone https://huggingface.co/episod/minimax-music3-fiona-crapple-blackhole
+    cd minimax-music3-fiona-crapple-blackhole
+    uv venv --python 3.12 .venv && uv pip install --python .venv/bin/python -r requirements.txt
+    gozer run --chips 1 -- .venv/bin/python serve/serve_music.py --ui     # without gozer: drop `gozer run --chips 1 --`
+    ```
+
+    The launcher installs the catalog image (`tt-model pull jashansinghTT/minimax-music3-blackhole`) if it is missing, downloads the
+    weights, starts the server on port 20000 and the Gradio page on port 7871.
+
+  usage: |
+    ```bash
+    curl -s localhost:20000/v1/music/jobs -H 'Content-Type: application/json' -d '{
+      "input": "[Verse 1]\nThe kettle sings at half past three\n[Chorus]\nStay a little longer",
+      "instructions": "fiona crapple, jazzy piano, raw female vocal, upright bass, brushed drums, intimate",
+      "audio_duration": 20, "seed": 11, "response_format": "flac"}'
+    # -> {"id": "...", "status": "queued", "queue_position": 0}
+    curl -s localhost:20000/v1/music/jobs/<id>            # status, frames_done, stats when done
+    curl -s localhost:20000/v1/music/jobs/<id>/audio -o song.flac
+    ```
+
+    `audio_duration` is in seconds (25 audio frames per second). The same seed, lyrics and description gave the same file: a repeated
+    request on one server, and the same request on a server on the other board, each returned a bit-identical file (one pair each).
+    In a test, 9 jobs submitted at once were accepted and a tenth got HTTP 429.
+
+  performance: |
+    | eval | this package | reference | prompts |
+    | --- | --- | --- | --- |
+    | Quality evaluation against MiniMax-Music3 | not run | not run | 0 |
+
+    | profile | audio length | concurrency | N | compute time (s) | per second of audio (s) | language model (s) | depth decoder (s) | diffusion (s) | vocoder (s) |
+    | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+    | `p150` | 20 s | 1 | 20 | 65.6 | 3.3 | 18.2 | 19.2 | 24.1 | 16.0 |
+
+    Medians of the server's own job timings for 20 requests, one song at a time, on one chip of a p300c board (QuietBox 2). The compute
+    time ranged from 64.8 to 68.7 s. One request finished at 16.6 s because the server reported the song as ended. The server was
+    healthy 90 to 172 s after its container started (4 starts).
+
+  limitations: |
+    - One song is generated at a time. In a test, 9 jobs were accepted at once (one running, eight waiting) and a tenth got HTTP 429.
+    - Slower than real time: about 3.3 s of compute per second of audio on one chip.
+    - Only the `p150` profile on one chip is tested, and only with 20 s requests. The server allows up to 9000 frames (6 minutes).
+    - A song can end before the requested length when the lyrics are finished (1 of 20 test requests: 16.6 s of 20 s).
+    - No quality evaluation against the base model has been run. The adapter was trained on nine tracks in one style; its effect without
+      the trigger phrase is not measured.
+    - Not for imitating a specific real artist's voice or presenting generated audio as a recording of a real person.
+    - On a host where loading a cached tensor of about 32 MiB or more never returns (seen with Linux 7.0.0-38, KMD 2.11.0), the launcher
+      runs the container with its tensor cache disabled.
+    - The server has no authentication; run it only on a network you trust.
+
+  licensing: |
+    Model weights: MiniMax-Music3 Community License; products built with the weights must display "MiniMax-Music3". The merged adapter is
+    Apache-2.0. Launcher and demo code: Apache-2.0.
+
+  related: |
+    - [jashansinghTT/minimax-music3-blackhole](https://huggingface.co/jashansinghTT/minimax-music3-blackhole): the unmodified MiniMax-Music3 container package this repository's launcher runs.
+    - [episod/minimax-music3-fiona-crapple](https://huggingface.co/episod/minimax-music3-fiona-crapple): the merged weights.
+
+  license:
+    id: other
+    name: minimax-music3-community-license
+    link: https://huggingface.co/MiniMaxAI/MiniMax-Music3/blob/main/LICENSE
+  pipeline_tag: text-to-audio
+  base_model:
+    - MiniMaxAI/MiniMax-Music3
