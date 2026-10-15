@@ -1,0 +1,7 @@
+tt-minimax-music-blackhole
+Copyright 2026 Tenstorrent AI ULC
+
+Licensed under the Apache License, Version 2.0. This license covers the code in this repository only.
+The MiniMax-Music3 weights, and weights derived from them, are under the MiniMax-Music3 Community License
+(https://huggingface.co/MiniMaxAI/MiniMax-Music3/blob/main/LICENSE). The language-model adapter merged into the
+weights this repository points at is Apache-2.0 (terminusresearch/minimax-music3-lm-lora-fiona-crapple).
