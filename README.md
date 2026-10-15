@@ -21,7 +21,7 @@ on Hugging Face is [`hf/README.md`](hf/README.md).
 
 ![The Gradio page with a finished song: waveform, player, length, seed and stage times](docs/gradio-done.png)
 
-The second screenshot is a two-sentence lyric: the song ended at 5.2 s of the 20 s asked for, because the lyrics were finished.
+The second screenshot is a two-sentence lyric: the song ended at 5.2 s of the 20 s asked for, because the lyrics were finished, and the page says so.
 
 ## Run it
 

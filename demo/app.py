@@ -111,7 +111,7 @@ def build_ui(client: MusicClient, poll_s: float = 2.0) -> gr.Blocks:
                 seconds = gr.Slider(MIN_SECONDS, MAX_SECONDS, value=20, step=5, label="Length (seconds)")
                 with gr.Accordion("More", open=False):
                     seed = gr.Number(label="Seed (blank for random; the seed used is shown)", value=None, precision=0, minimum=0)
-                    steps = gr.Number(label="Diffusion steps (blank for the server's default)", value=None, precision=0, minimum=1, maximum=100)
+                    steps = gr.Number(label="Diffusion steps, 1 to 100 (blank or 0 for the server's default)", value=None, precision=0)   # no minimum here: a blank box arrives as 0
                 go = gr.Button("Generate", variant="primary")
             with gr.Column(scale=1):
                 audio = gr.Audio(label="Result", type="filepath", interactive=False)

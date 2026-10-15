@@ -87,3 +87,7 @@ def test_the_title_says_companion_and_names_the_board(card):
 def test_the_screenshots_are_in_the_card_and_the_files_exist(card):
     for name in ("gradio-generating.png", "gradio-done.png"):
         assert f"](docs/{name})" in card and (ROOT / "docs" / name).is_file()
+
+
+def test_the_card_says_the_page_explains_an_early_end(card):
+    assert "The page says so when it happens." in card

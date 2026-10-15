@@ -158,3 +158,30 @@ def test_a_short_clip_without_the_servers_ended_flag_has_no_note():
     with FakeMusicServer(short_audio_s=5.0) as srv:
         _, status, _ = run(srv, seconds=20)
     assert "before the" not in status
+
+
+def test_the_real_app_accepts_zero_steps_and_means_the_servers_default():
+    # The browser sends a blank number box as 0 once the "More" panel has been touched; a minimum of 1 on the
+    # component rejected that before run_generation could treat it as "use the default".
+    from gradio_client import Client
+    import socket
+    with FakeMusicServer() as srv:
+        demo = app.build_ui(MusicClient(srv.url), poll_s=0.01)
+        with socket.socket() as sock:
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
+        _, url, _ = demo.launch(server_name="127.0.0.1", server_port=port, prevent_thread_lock=True, quiet=True)
+        try:
+            audio, status, _ = Client(url, verbose=False).predict("[Verse]\nla", "warm folk", 20, 9, 0, api_name="/generate")
+            assert "seed 9" in status
+            assert "num_inference_steps" not in srv.submitted[-1]
+        finally:
+            demo.close()
+
+
+@pytest.mark.parametrize("steps", [101, 500])
+def test_steps_above_the_servers_limit_are_a_plain_message(steps):
+    with FakeMusicServer() as srv:
+        with pytest.raises(gr.Error, match="steps"):
+            run(srv, steps=steps)
+        assert srv.submitted == []
