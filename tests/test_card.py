@@ -70,7 +70,7 @@ def test_it_does_not_call_itself_verified(card):
 
 def test_every_measured_number_in_the_card_matches_the_yaml(card):
     y = YAML.read_text()
-    for token in ("65.6", "64.8 to 68.7", "16.6", "90 to 172"):
+    for token in ("65.6", "64.8 to 68.7", "16.6", "5.2 s", "90 to 172"):
         assert token in card and token in y
 
 
@@ -82,3 +82,8 @@ def test_required_sections_are_not_empty(card):
 
 def test_the_title_says_companion_and_names_the_board(card):
     assert card.split("\n# ", 1)[1].splitlines()[0] == "minimax-music3-fiona-crapple on Tenstorrent p150 (companion)"
+
+
+def test_the_screenshots_are_in_the_card_and_the_files_exist(card):
+    for name in ("gradio-generating.png", "gradio-done.png"):
+        assert f"](docs/{name})" in card and (ROOT / "docs" / name).is_file()

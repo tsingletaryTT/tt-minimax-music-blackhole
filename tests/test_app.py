@@ -133,3 +133,28 @@ def test_a_busy_server_is_shown_with_the_busy_message_and_not_the_generic_failur
 
 def test_both_trigger_examples_use_the_trigger_phrase():
     assert sum("fiona crapple" in c for _, c, _, _ in app.EXAMPLES) == 2
+
+
+def test_a_song_that_ended_early_says_so_in_plain_words():
+    with FakeMusicServer(ended_audio_s=5.18966) as srv:
+        _, status, details = run(srv, seconds=20)
+    assert "5.2 s" in status and "before the 20 s" in status and "lyrics" in status
+    assert "5.18966" not in status and "5.18966" not in details
+
+
+def test_a_full_length_song_has_no_early_end_note_and_its_length_has_one_decimal():
+    with FakeMusicServer() as srv:
+        _, status, details = run(srv, seconds=20)
+    assert "20.0 s of audio" in status and "before the" not in status
+
+
+def test_a_song_that_ended_within_five_percent_of_the_request_has_no_note():
+    with FakeMusicServer(ended_audio_s=19.5) as srv:
+        _, status, _ = run(srv, seconds=20)
+    assert "before the" not in status
+
+
+def test_a_short_clip_without_the_servers_ended_flag_has_no_note():
+    with FakeMusicServer(short_audio_s=5.0) as srv:
+        _, status, _ = run(srv, seconds=20)
+    assert "before the" not in status

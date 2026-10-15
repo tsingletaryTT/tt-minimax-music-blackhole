@@ -56,6 +56,10 @@ gozer run --chips 1 -- .venv/bin/python serve/serve_music.py --ui     # without 
 The launcher installs the catalog image (`tt-model pull jashansinghTT/minimax-music3-blackhole`) if it is missing, downloads the
 weights, starts the server on port 20000 and the Gradio page on port 7871.
 
+![The Gradio page while a song is generating, with the progress bar](docs/gradio-generating.png)
+
+![The Gradio page with a finished song: waveform, player, length, seed and stage times](docs/gradio-done.png)
+
 ## Capabilities
 
 This package exposes the model's own HTTP server on port 20000, **not** an OpenAI-compatible chat API — its request and response shapes are the model's own. See the author's notes for the payload it expects.
@@ -93,7 +97,7 @@ healthy 90 to 172 s after its container started (4 starts).
 - One song is generated at a time. In a test, 9 jobs were accepted at once (one running, eight waiting) and a tenth got HTTP 429.
 - Slower than real time: about 3.3 s of compute per second of audio on one chip.
 - Only the `p150` profile on one chip is tested, and only with 20 s requests. The server allows up to 9000 frames (6 minutes).
-- A song can end before the requested length when the lyrics are finished (1 of 20 test requests: 16.6 s of 20 s).
+- A song ends when its lyrics are finished, which can be before the requested length: a two-sentence lyric made 5.2 s of a requested 20 s, and 1 of 20 test requests with full lyrics ended at 16.6 s of 20 s.
 - No quality evaluation against the base model has been run. The adapter was trained on nine tracks in one style; its effect without
   the trigger phrase is not measured.
 - Not for imitating a specific real artist's voice or presenting generated audio as a recording of a real person.

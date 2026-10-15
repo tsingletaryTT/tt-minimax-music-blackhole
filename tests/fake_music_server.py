@@ -10,8 +10,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
 class FakeMusicServer:
-    def __init__(self, queue_limit=9, steps_before_done=2, fail_with=None, model="fiona-crapple-merged"):
+    def __init__(self, queue_limit=9, steps_before_done=2, fail_with=None, model="fiona-crapple-merged", ended_audio_s=None, short_audio_s=None):
         self.queue_limit, self.steps_before_done, self.fail_with, self.model = queue_limit, steps_before_done, fail_with, model
+        self.short_audio_s = short_audio_s        # audio shorter than asked for, without the server's `ended` flag
+        self.ended_audio_s = ended_audio_s        # when set, every song ends after this many seconds, as the real server does when the lyrics run out
         self.jobs = {}             # id -> dict(body, polls)
         self.submitted = []        # request bodies, in order
         self.cancelled = []
@@ -55,7 +57,8 @@ class FakeMusicServer:
                                                 "frames_max": int(frames), "stage": "semantic"})
                     return self._send(200, {"id": jid, "status": "done", "frames_done": int(frames), "frames_max": int(frames),
                                             "stage": "done", "audio_url": f"/v1/music/jobs/{jid}/audio",
-                                            "stats": {"audio_s": job["body"].get("audio_duration", 20), "total_s": 65.0, "llm_s": 18.0,
+                                            "stats": {"audio_s": outer.ended_audio_s or outer.short_audio_s or job["body"].get("audio_duration", 20), "ended": outer.ended_audio_s is not None,
+                                                      "total_s": 65.0, "llm_s": 18.0,
                                                       "depth_s": 19.1, "denoise_s": 23.9, "vocoder_s": 14.6, "seed": job["body"].get("seed")}})
                 return self._send(404, {"detail": "not found"})
 

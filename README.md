@@ -15,6 +15,14 @@ on Hugging Face is [`hf/README.md`](hf/README.md).
 | Speed | about 3.3 s of compute per second of audio, one song at a time |
 | License | code Apache-2.0; weights under the MiniMax-Music3 Community License ([NOTICE](NOTICE)) |
 
+## What it looks like
+
+![The Gradio page while a song is generating, with the progress bar](docs/gradio-generating.png)
+
+![The Gradio page with a finished song: waveform, player, length, seed and stage times](docs/gradio-done.png)
+
+The second screenshot is a two-sentence lyric: the song ended at 5.2 s of the 20 s asked for, because the lyrics were finished.
+
 ## Run it
 
 ```bash

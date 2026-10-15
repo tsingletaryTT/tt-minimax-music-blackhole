@@ -82,10 +82,14 @@ def run_generation(client: MusicClient, lyrics, caption, seconds, seed, steps, p
     out.write_bytes(result.audio)
     s = result.stats
     audio_s, total_s = s.get("audio_s") or seconds, s.get("total_s")
-    status = f"Done: {audio_s:g} s of audio, seed {seed_i}."
+    status = f"Done: {audio_s:.1f} s of audio, seed {seed_i}."
+    if s.get("ended") and audio_s < 0.95 * seconds:
+        # the server stops a song when its lyrics are finished, which can be before the length asked for
+        status += (f" The song ended at {audio_s:.1f} s, before the {seconds:g} s asked for: the lyrics were finished. "
+                   "Longer lyrics make a longer song.")
     lines = []
     if total_s:
-        lines.append(f"Compute **{total_s:.0f} s** for **{audio_s:g} s** of audio: {total_s / audio_s:.1f} s per second of audio.")
+        lines.append(f"Compute **{total_s:.0f} s** for **{audio_s:.1f} s** of audio: {total_s / audio_s:.1f} s per second of audio.")
         stages = [(k, s.get(f"{k}_s")) for k in ("llm", "depth", "denoise", "vocoder", "decode")]
         lines.append("Stage times: " + ", ".join(f"{k} {v:.1f} s" for k, v in stages if v is not None) + ".")
     lines.append(f"Job `{result.job_id}`, caption: {caption}")
