@@ -6,8 +6,8 @@
     serve_music.py [--model-dir DIR | --weights-repo REPO] [--workaround auto|on|off] [--ui]
 
 What it does that `tt-model serve` alone does not:
-  * passes only the chips of the current lease (TT_VISIBLE_DEVICES, as gozer sets it) into the container, as devices
-    0, 1, and refuses a docker command that does not have exactly one --device argument to replace;
+  * passes only the chips of the current lease (TT_VISIBLE_DEVICES, as gozer sets it) into the container, each under
+    its own /dev/tenstorrent number, and refuses a docker command that does not have exactly one --device argument to replace;
   * serves a model directory (`HF_MODEL=<dir>`, mounted read-only with the blob directories its links point into);
   * keeps its own cache directories for this model directory and creates them first (a missing mount source is
     created by Docker as root, and the container then cannot write to it);
@@ -69,10 +69,12 @@ def device_nodes(bdfs: list[str], sysfs=Path("/sys/bus/pci/devices")) -> list[in
 
 
 def rewrite_device(cmd: str, nodes: list[int]) -> str:
-    """Replace the one --device argument `tt-model serve --print` wrote with one per leased node, as devices 0, 1, ..."""
+    """Replace the one --device argument `tt-model serve --print` wrote with one per leased node, under its own number."""
     if len(DEVICE_RE.findall(cmd)) != 1:
         raise LauncherError(f"expected exactly one --device argument in the docker command, found {len(DEVICE_RE.findall(cmd))}")
-    new = " ".join(f"--device /dev/tenstorrent/{n}:/dev/tenstorrent/{i}" for i, n in enumerate(nodes))
+    # Each node keeps its own number inside the container. UMD's CHIP_IN_USE_<n>_PCIe lock is a file in /dev/shm, which
+    # `--ipc host` shares between containers: renumbering two different chips to "0" made them wait on one lock.
+    new = " ".join(f"--device /dev/tenstorrent/{n}:/dev/tenstorrent/{n}" for n in nodes)
     return DEVICE_RE.sub(lambda m: new, cmd, count=1)
 
 

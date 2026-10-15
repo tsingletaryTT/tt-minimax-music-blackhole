@@ -42,15 +42,17 @@ def test_a_chip_with_no_device_node_is_an_error(tmp_path):
         sm.device_nodes(["0000:09:00.0"], sysfs=tmp_path)
 
 
-def test_rewrite_device_passes_only_the_given_nodes_as_devices_0_and_1():
+def test_rewrite_device_passes_only_the_given_nodes_under_their_own_numbers():
+    # Not renumbered from 0: UMD's CHIP_IN_USE_<n>_PCIe lock lives in /dev/shm, which `--ipc host` shares between
+    # containers, so two containers that both called their chip "0" would wait on one lock (seen 2026-10-15).
     out = sm.rewrite_device(PRINTED, [2, 3])
-    assert "--device /dev/tenstorrent/2:/dev/tenstorrent/0 --device /dev/tenstorrent/3:/dev/tenstorrent/1" in out
+    assert "--device /dev/tenstorrent/2:/dev/tenstorrent/2 --device /dev/tenstorrent/3:/dev/tenstorrent/3" in out
     assert out.count("--device") == 2 and "/dev/tenstorrent/0:/dev/tenstorrent/0" not in out
 
 
 def test_rewrite_device_matches_whichever_node_tt_model_printed():
     printed = PRINTED.replace("/dev/tenstorrent/0:/dev/tenstorrent/0", "/dev/tenstorrent/2:/dev/tenstorrent/2")
-    assert "--device /dev/tenstorrent/3:/dev/tenstorrent/0" in sm.rewrite_device(printed, [3])
+    assert "--device /dev/tenstorrent/3:/dev/tenstorrent/3" in sm.rewrite_device(printed, [3])
 
 
 @pytest.mark.parametrize("cmd", ["docker run --ipc host img", PRINTED + " --device /dev/tenstorrent/1:/dev/tenstorrent/1"])
@@ -175,7 +177,7 @@ def test_probe_ok_boots_without_the_workaround(tmp_path):
     L.start()
     run = docker_run_call(r)
     assert "core.py" not in run and L.workaround is None
-    assert "--device /dev/tenstorrent/2:/dev/tenstorrent/0" in run
+    assert "--device /dev/tenstorrent/2:/dev/tenstorrent/2" in run
 
 
 def test_probe_hang_selects_the_workaround_and_records_it(tmp_path):
